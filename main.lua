@@ -7,7 +7,7 @@ Class = require('class') -- we make it available globally for other files to use
 -- to löve's actual resolution. Important for the retro look
 local push = require('push')
 
--- Classes I've created on another file in the same folder
+-- Importing classes
 require "Ball"
 require "Background"
 require 'Pipe'
@@ -16,7 +16,7 @@ require 'Pipe'
 local WINDOW_WIDTH = 480
 local WINDOW_HEIGHT = 432
 
--- our "virtual," upscaled height
+-- our "virtual" size
 VIRTUAL_WIDTH = 160
 VIRTUAL_HEIGHT = 144
 
@@ -30,45 +30,49 @@ function love.load()
     -- sets the window's title
     love.window.setTitle("GBC Bouncy Ball Game")
 
+    -- initializing the current state directly to "play" as there's no title 
+    -- screen (as of yet)
     state = 'play'
 
+    -- initializing table in which we will store, each frame, the keys pressed 
+    -- by the user
     love.keyboard.keysPressed = {}
 
     -- sets up push
     push:setupScreen(VIRTUAL_WIDTH, VIRTUAL_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT,
                      {fullscreen = false, resizable = true, pixelperfect = true})
 
-    -- creating the ball
+    -- creating the ball by creating an object from the Ball class
     redBall = Ball(VIRTUAL_WIDTH / 2 - 8, VIRTUAL_HEIGHT / 2 - 8,
                    "assets/ball.png")
     redBall:loadToMemory()
 
-    -- creating the pipes table
+    -- creating the pipes table, which will contain active (e.g. on screen)
+    -- pipes
     pipes = {}
 
+    -- initializing timer, which we will use to determine when to spawn a new
+    -- pipe (or set of pipes) on screen
     timer = 0
 
+    -- Lua's "random" function needs to be manually randomized with the current
+    -- time, otherwise it will be "the same random every time"
     math.randomseed(os.time())
 
     -- creating BG image object
-    bg = Background(0, 0, "assets/tiled-bg.png")
-    bg:loadToMemory()
+    bg = Background()
 
     -- loading font to display FPS
     smallFont = love.graphics.setNewFont("assets/font.ttf", 8)
-
-    -- a table with the keys pressed, which gets reset after each frame. Why?
-    -- Because love doesn't allow us to know whether a key has been pressed
-    -- "once", only if it's pressed down or not. Yet, what we want is to have
-    -- an action applied to only one frame when the user presses it
-    buttonsPressed = {}
 end
 
 function love.keypressed(key)
+    -- this is the only function in LOVE in which you can listen for user input.
+
     -- each frame, we add the keys that have been pressed to this table.
     -- why? we can't detect one press, only the press state. By flushing this
     -- table at the end of each frame we have a table which effectively
-    -- lists the keys that have been pressed on a specific frame
+    -- lists the keys that have been pressed during a specific frame
 
     love.keyboard.keysPressed[key] = true
 end
@@ -76,18 +80,19 @@ end
 function love.keyboard.wasPressed(key) return love.keyboard.keysPressed[key] end
 
 function love.update(dt)
-    -- quitting with escape
+    -- quitting with escape (valid in any state)
     if love.keyboard.isDown("escape") then love.event.quit() end
 
+    -- the following are updates which should only take place in the "play" state
     if state == "play" then
+
         -- updating ball movement
         redBall:update(dt)
 
-        -- every 2 seconds, add a pipe to the table
+        -- every 2 seconds, add a pipe to the pipes table
         timer = timer + dt
         if timer > 2 then
-            local pipe = Pipe()
-            pipe:loadToMemory()
+            local pipe = Pipe() -- add pipe to table
             table.insert(pipes, #pipes, pipe)
             timer = 0
         end
@@ -96,7 +101,7 @@ function love.update(dt)
         for k, pipe in pairs(pipes) do
             pipe:update(dt)
             if pipe.x + pipe.width < 0 then
-                pipe.toDelete = true -- marking pipes to delete if they reached end
+                pipe.toDelete = true -- marking pipes if they reached end
             end
         end
 
@@ -105,17 +110,17 @@ function love.update(dt)
             if pipe.toDelete then table.remove(pipes, k) end
         end
 
-        -- cube collision with bottom
+        -- if ball collides with bottom, switch to game over state (not implem.)
         if redBall.y + redBall.height > VIRTUAL_HEIGHT then
             state = "gameover"
         end
 
-        -- ball collision with pipe
+        -- if the ball collides with any of the active pipes, go to gameover
         for k, pipe in pairs(pipes) do
             if redBall:collidedWith(pipe) then state = "gameover" end
         end
 
-        -- flushing out table of keys wasPressed
+        -- flushing out table of keys pressed 
         love.keyboard.keysPressed = {}
 
         bg:update(dt)
@@ -129,20 +134,22 @@ function love.draw()
     -- drawing the bg
     bg:draw()
 
-    -- drawing the pink box
+    -- drawing the ball 
     redBall:draw()
 
+    -- drawing the pipes in the pipes table 
     for k, pipe in pairs(pipes) do pipe:draw() end
 
     -- drawing the current FPS in the top left corner
-    renderFPS()
+    drawFPS()
 
     push:finish()
 end
 
+-- push also takes over love's resizing function
 function love.resize(w, h) push:resize(w, h) end
 
-function renderFPS()
+function drawFPS()
     love.graphics.print("FPS: " .. tostring(love.timer.getFPS()), 5,
                         VIRTUAL_HEIGHT - 10)
 end

@@ -1,18 +1,15 @@
 Background = Class{}
 
-function Background:init(x, y, filename)
-    self.x = x
-    self.y = y
-    self.dx = 30
-    self.filename = filename
-end
+BG_DRAWABLE = love.graphics.newImage("assets/tiled-bg.png")
 
-function Background:loadToMemory()
-    self.drawable = love.graphics.newImage(self.filename)
+function Background:init()
+    self.x = 0
+    self.y = 0
+    self.dx = 30
 end
 
 function Background:draw()
-    love.graphics.draw(self.drawable, self.x, self.y)
+    love.graphics.draw(BG_DRAWABLE, self.x, self.y)
 end
 
 function Background:update(dt)
